@@ -2,61 +2,49 @@
 #include<windows.h>
 #include<conio.h>
 #include<string>
-#include"bag/cdk.cpp"
-#include"bag/set.cpp"
 
 using namespace std;
 SYSTEMTIME sys;
 
 //显示设置
-const string title="原神";//标题
-const char *lab="Genshin Impact Wish";//副标题
-const string ibate="sv1.8.0",t_cx="2025.08.25 21:00";//程序详情
+const string title="崩坏：星穹铁道";//标题
+const string ibate="sv1.5.3",t_cx="2024.10.02 14:18";//程序详情
 string set_link="items/set.ini";//配置链接
 
 //基础配置
-time_t chtc=0;
-int base=60,tplus=600,stpl=74,maxpl=90;//五星概率
-int fase=510,flus=5100,ftpl=9,faxpl=10;//四星概率
 string bate,t_day,t_time,made_by,made_co;//卡池内容
+int gold=6;//概率
 int ten=10;//十连次数
 int card=8,page=1;//当前选择
 int all=0,res=0;//卡池总数,常驻数
 bool resp[300];//常驻判定
-const int cpmax=200;
-string from[cpmax],name[cpmax],five[cpmax],four[cpmax][3];//卡池内容
+string from[300],name[300],five[300],four[300][3];//卡池内容
 int mfive=0,mfour=0,mthree=0;//通用数量
 string afive[10],afour[150],athree[50];//通用内容
 bool first=true;//读入限制
-int wait=1500;//十连等待时间
-char musicPath[20]="items\\set*.ini";//配置文件路径
+int wait=1220;//十连等待时间
 
-//功能开关
-bool gls=false;//[调试]概率公示
-bool outset=false;//set加密
-bool boom=true;//改变出率
-bool copyright=false;//校验文件
-bool creadin=true;//切换配置文件
+//配置文件
+bool creadin=false;//关闭切换配置文件？
+char musicPath[20]="items\\set*.ini";
 
 //抽卡记录
-const int alto=10000;//存储容量
 bool big=false;//保底机制
 int small=1;//四星统计
 int alt=0,now=0;//统计
-string history[alto],level[alto];//存储
+string history[100000],level[100000];//存储
 
 //公告栏
 int ads_max=6;
-string ads[20]= {"原作者不对任何配置文件负责",\
-                 "广告位招租！！！",\
+string ads[20]= {"最新更新：公告栏显示",\
+                 "广告位招租!!!",\
                  "и'(?)_∵д*?(古神の低语)",\
-                 "Genshin Impact Wish En !",\
+                 "对\"切换卡池\"界面进行了重构",\
                  "会自动打开大写锁定了哦~",\
-                 "copyright 2023~2025 兮辞_xicios"\
+                 "xicios版权所有"\
                 };
 
 //调用区
-void Error (int qust);
 void sets();
 void ads_show();
 void save();
@@ -65,7 +53,7 @@ void setCursorPosition(int x, int y);
 int main () {
 	//初始化
 	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE),2);
-	SetConsoleTitle(lab);
+	SetConsoleTitle("Main Design Project");
 	HANDLE handle = GetStdHandle(STD_OUTPUT_HANDLE);//隐藏控制台光标
 	CONSOLE_CURSOR_INFO CursorInfo;
 	GetConsoleCursorInfo(handle, &CursorInfo);
@@ -75,32 +63,19 @@ int main () {
 		keybd_event(VK_CAPITAL, 0, 0, 0);
 		keybd_event(VK_CAPITAL, 0, KEYEVENTF_KEYUP, 0);
 	}
-	//#通行证校验
-	int pass=0;
-    time_t tnow;
-    time(&tnow);
-	if (tnow-chtc>=120) {//2分钟内跳过检测
-		pass=cdk();
-		time(&chtc);//重置计时器
-	} else pass=1;//跳过检测
-	if (pass!=1&&copyright==true) {
-		if (pass!=3) remove("items/set.ini");
-		exit(0);
-	}
 	system("cls");
 	//读入
 	if (first==true) {
 		//读入临时文件
 		ifstream tin("items/temp.ini");
-		tin>>page>>card>>ten;
-		tin>>base>>tplus>>stpl>>maxpl;
-		tin>>fase>>flus>>ftpl>>faxpl;
+		tin>>page>>card>>gold>>ten;
 		tin>>set_link;
+		tin>>creadin;
 		tin.close();
 		//校验配置文件
 		WIN32_FIND_DATA findFileData;
 		HANDLE hFind=FindFirstFile(musicPath,&findFileData);
-		if (hFind==INVALID_HANDLE_VALUE&&creadin==false&&outset==false) {
+		if (hFind==INVALID_HANDLE_VALUE&&creadin==false) {
 			cout<<"[Error]未查询到配置文件"<<endl;
 			Sleep(3000);
 			exit(0);
@@ -112,7 +87,6 @@ int main () {
 		if (ads_plus>0&&(ads_plus+ads_max)<=20) for (int ls=0; ls!=ads_plus; ls++,ads_max++) ain>>ads[ads_max];
 		ain.close();
 		//读入卡池
-		if (outset==true) set_main();
 		ifstream fin(set_link);
 		fin>>made_by>>made_co>>bate>>t_day>>t_time;
 		if (bate=="\0") sets();//配置文件为空
@@ -144,24 +118,21 @@ int main () {
 			main();
 		}
 		bool wrong=false;
-		if (page<1||page>all-8&&all>8||card<1||card>all||ten<1||ten>1000) wrong=true;
-		if (base<1||base>10000||tplus<1||tplus>10000||stpl<1||stpl>maxpl) wrong=true;
-		if (fase<1||fase>10000||flus<1||flus>10000||ftpl<1||ftpl>faxpl) wrong=true;
+		if (page<1||page>all-8) wrong=true;
+		if (card<1||card>all) wrong=true;
+		if (gold<1||gold>1000) wrong=true;
+		if (ten<1||ten>10000) wrong=true;
 		if (wrong==true) {
-			int tcin[11]= {1,1,10,60,600,74,90,510,5100,9,10};
-			for (int ls=0; ls!=11; ls++) fin>>tcin[ls];
-			page=tcin[0],card=tcin[1],ten=tcin[2];
-			base=tcin[3],tplus=tcin[4],stpl=tcin[5],maxpl=tcin[6];
-			fase=tcin[7],flus=tcin[8],ftpl=tcin[9],faxpl=tcin[10];
+			int tcin[4]= {1,1,6,10};
+			for (int ls=0; ls!=4; ls++) fin>>tcin[ls];
+			page=tcin[0],card=tcin[1],gold=tcin[2],ten=tcin[3];
 			save();
 			cout<<"[#请勿修改配置文件]"<<endl;
 		}
 		fin.close();
-		if (outset==true) set_del();
 		first=false;
 	}
 	//显示
-	system("cls");
 	cout<<"「"<<title<<"」抽卡模拟器"<<endl;
 	cout<<"制作者: 兮辞"<<endl;
 	cout<<"卡池版本: "<<bate<<endl;
@@ -191,12 +162,6 @@ int main () {
 	char choose=getch();
 	system("cls");
 	if (choose=='S'||choose=='s') {
-		//check
-		ifstream kin("items/news.ini");
-		int new_max=0;
-		kin>>new_max;//更新说明数量
-		kin.close();
-		//show
 		cout<<"「"<<title<<"」抽卡模拟器"<<endl;
 		cout<<"制作者: 兮辞"<<endl;
 		cout<<"程序版本: "<<ibate<<endl;
@@ -204,23 +169,22 @@ int main () {
 		cout<<"--------------------------------------"<<endl;
 		cout<<"           「关于程序文件」"<<endl;
 		cout<<"著作权人: 兮辞"<<endl;
-		cout<<"版权归属: Copyright 2023-2025 XICIOS"<<endl;
+		cout<<"版权归属: xicios.co"<<endl;
 		cout<<"程序版本: "<<ibate<<endl;
-		cout<<"更新时间: "<<t_cx<<endl;
+		cout<<"程序更新时间: "<<t_cx<<endl;
 		cout<<"--------------------------------------"<<endl;
 		cout<<"           「关于卡池文件」"<<endl;
 		cout<<"著作权人: "<<made_by<<endl;
-		cout<<"版权归属: Copyright 2025 "<<made_co<<endl;
+		cout<<"版权归属: "<<made_co<<".co"<<endl;
 		cout<<"卡池版本: "<<bate<<endl;
-		cout<<"更新时间: "<<t_day<<" "<<t_time<<endl;
+		cout<<"卡池更新时间: "<<t_day<<" "<<t_time<<endl;
 		cout<<"--------------------------------------"<<endl;
-		if (new_max>0) cout<<">按S查看更新内容"<<endl;
-		if (creadin==true) cout<<">按X更改配置文件"<<endl;
+		cout<<">按S查看更新内容"<<endl;
+		if (creadin==false) cout<<">按X更改配置文件"<<endl;
 		cout<<">按任意键退出本页面"<<endl;
 		cout<<"--------------------------------------"<<endl;
 		choose=getch();
 		if (choose=='S'||choose=='s') {
-			if (new_max<=0) Error(2);
 			//变量
 			int max[200],npage=1;
 			string beta[200],day[200],time[200],out[200][15];
@@ -288,7 +252,7 @@ int main () {
 		cout<<"五星:"<<S<<"个"<<endl;
 		cout<<"四星:"<<R<<"个"<<endl;
 		cout<<"三星:"<<A<<"个"<<endl;
-		char got=getch();
+		Sleep(9000);
 		main();
 	} else if (choose=='D'||choose=='d') {//控制面板
 		cout<<"控制面板"<<endl;
@@ -303,8 +267,7 @@ int main () {
 		cout<<">O.清零保底"<<endl;
 		cout<<">P.清空记录"<<endl;
 		cout<<">J.抽取次数"<<endl;
-		if (boom==true) cout<<">K.修改概率"<<endl;
-		else cout<<"K.功能锁定"<<endl;
+		cout<<">K.修改概率"<<endl;
 		cout<<">L.切换卡池"<<endl;
 		cout<<"--------------------------------------"<<endl;
 		choose=getch();
@@ -359,19 +322,18 @@ int main () {
 		} else if (choose=='J') {//修改次数
 			cout<<"多次抽取"<<endl;
 			cout<<"--------------------------------------"<<endl;
-			cout<<"当前抽取次数:"<<ten<<endl;
-			cout<<"抽取次数(可选择:1~100[默认:10]):";
+			cout<<"抽取次数(可选择:1~1000[默认:10]):";
 			cin>>ten;
-			if(ten<1||ten>100) ten=10;
+			if(ten<1||ten>1000) ten=10;
 			save();
 			main();
-		} else if (choose=='K'&&boom==true) {//修改概率
+		} else if (choose=='K') {//修改概率
 			cout<<"修改概率"<<endl;
 			cout<<"--------------------------------------"<<endl;
-			cout<<"当前出金率:"<<base<<endl;
-			cout<<"修改出金率(0-10000[默认:60]):";
-			cin>>base;
-			if (base<0||base>10000) base=60;
+			cout<<"当前出金率:"<<gold<<endl;
+			cout<<"修改出金率(0-1000[默认:6]):";
+			cin>>gold;
+			if (gold<0||gold>1000) gold=6;
 			save();
 			main();
 		} else if (choose=='L') {//卡池切换
@@ -429,20 +391,15 @@ int main () {
 		int again=1;
 		if (choose=='Q') again=ten;
 		while (again!=0) {
-
-			small+=1;
 			unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
 			mt19937 generator (seed);
-			int ls1=generator()%10000+1;
-			double pro=base;
-			if (now>=stpl) pro+=tplus*(now-stpl+1);
-			double fro=fase,tro=10000-base-fase;
-			if (small>=ftpl) fro+=flus*(small-ftpl+1);
-			fro=(fro/10000)*(10000-pro);
-			if (pro+fro>=10000) {
-				tro=0;
-				fro=10000-pro;
-			} else tro=10000-pro-fro;
+			int ls1=generator()%1000+1;
+			int pro=gold;//74抽以下
+			if (now>=74) pro=6+(60*(now-73));//74抽及以上
+			int tro=949-pro;
+			small+=1;
+			if (small==9) tro=439-pro;
+			if (small>=10) tro=0;
 			if (ls1<=pro) {//五星
 				SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE),6);
 				unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
@@ -460,7 +417,7 @@ int main () {
 					big=false;
 					history[alt]=five[card];
 				}
-			} else if (ls1<tro+pro) {//三星
+			} else if (ls1<=tro) {//三星
 				SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE),1);
 				unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
 				mt19937 generator (seed);
@@ -490,10 +447,9 @@ int main () {
 			alt+=1;
 			now+=1;
 			again-=1;
-			if (choose=='Q') Sleep(16);
-			if (gls==true) cout<<pro<<" "<<fro<<" "<<tro<<" "<<ls1<<endl;//[调试]概率显示
+			if (choose=='Q') Sleep(20);
 		}
-		if (choose=='E') Sleep(600);
+		if (choose=='E') Sleep(200);
 		else Sleep(wait);
 		main();
 	}
@@ -503,20 +459,16 @@ int main () {
 
 //调用区
 
-void Error (int qust) {
-	//移除使用本功能
-	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE),0x0c);
-	if (qust==1) cout<<"[Error] 相关功能已被开发者锁定。"<<endl;
-	else if (qust==2) cout<<"[Error] 相关数据丢失。"<<endl;
-	else cout<<"[Error] 未知错误。"<<endl;
-	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE),2);
-	Sleep(2000);
-	main();
-}
-
 void sets () {
 	//更改配置文件
-	if (creadin==false) Error(1);
+	if (creadin==true) {
+		//移除使用本功能
+		SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE),0x0c);
+		cout<<"[Error] 相关功能已被开发者锁定。"<<endl;
+		SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE),2);
+		Sleep(2000);
+		main();
+	}
 	//路径搜索
 	WIN32_FIND_DATA findFileData;
 	HANDLE hFind=FindFirstFile(musicPath,&findFileData);
@@ -554,18 +506,15 @@ void sets () {
 		FindClose(hFind);
 	}
 	cout<<"--------------------------------------"<<endl;
-	bool fp=true;
 	if (set_all!=1) {
 		cout<<"输入序号读取配置文件：";
 		cin>>j;
 		while ('\n'!=getchar());
-		if(j<1||j>i) fp=false;
+		if(j<1||j>i) cout<<"非法输入！"<<endl;
 		else set_link=path[j-1];
 	} else set_link=path[0];
 	save();
-	cout<<endl;
-	if (fp==false) cout<<"非法输入！"<<endl;
-	else cout<<"配置文件'"<<set_link<<"'读取成功！"<<endl;
+	cout<<"配置文件'"<<set_link<<"'读取成功！"<<endl;
 	first=true;
 	Sleep(1500);
 	main();
@@ -584,10 +533,9 @@ void ads_show() {
 void save() {
 	//保存
 	ofstream fout("items/temp.ini");
-	fout<<page<<" "<<card<<" "<<ten<<endl;
-	fout<<base<<" "<<tplus<<" "<<stpl<<" "<<maxpl<<endl;
-	fout<<fase<<" "<<flus<<" "<<ftpl<<" "<<faxpl<<endl;
+	fout<<page<<" "<<card<<" "<<gold<<" "<<ten<<endl;
 	fout<<set_link<<endl;
+	fout<<creadin;
 	fout.close();
 }
 
@@ -597,3 +545,5 @@ void setCursorPosition(int x, int y) { //自定义光标定位
 	coord.Y = y;
 	SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), coord);
 }
+
+//#开发者可在temp文件尾加一个非零参数关闭修改配置文件
