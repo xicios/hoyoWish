@@ -3,17 +3,19 @@
 #include<conio.h>
 #include<string>
 #include"bag/cdk.cpp"
+#include"bag/set.cpp"
 
 using namespace std;
 SYSTEMTIME sys;
 
 //显示设置
-const string title="兮辞_xicios";//标题
-const char *lab="Main Project";//副标题
-const string ibate="sv1.7.0",t_cx="2025.01.21 12:00";//程序详情
+const string title="原神";//标题
+const char *lab="Genshin Impact Wish";//副标题
+const string ibate="sv1.8.0",t_cx="2025.08.25 21:00";//程序详情
 string set_link="items/set.ini";//配置链接
 
 //基础配置
+time_t chtc=0;
 int base=60,tplus=600,stpl=74,maxpl=90;//五星概率
 int fase=510,flus=5100,ftpl=9,faxpl=10;//四星概率
 string bate,t_day,t_time,made_by,made_co;//卡池内容
@@ -26,12 +28,12 @@ string from[cpmax],name[cpmax],five[cpmax],four[cpmax][3];//卡池内容
 int mfive=0,mfour=0,mthree=0;//通用数量
 string afive[10],afour[150],athree[50];//通用内容
 bool first=true;//读入限制
-int wait=1220;//十连等待时间
+int wait=1500;//十连等待时间
 char musicPath[20]="items\\set*.ini";//配置文件路径
 
 //功能开关
+bool gls=false;//[调试]概率公示
 bool outset=false;//set加密
-bool gls=false;//概率公示
 bool boom=true;//改变出率
 bool copyright=false;//校验文件
 bool creadin=true;//切换配置文件
@@ -48,12 +50,13 @@ int ads_max=6;
 string ads[20]= {"原作者不对任何配置文件负责",\
                  "广告位招租！！！",\
                  "и'(?)_∵д*?(古神の低语)",\
-                 "2025新春快乐喵~",\
+                 "Genshin Impact Wish En !",\
                  "会自动打开大写锁定了哦~",\
                  "copyright 2023~2025 兮辞_xicios"\
                 };
 
 //调用区
+void Error (int qust);
 void sets();
 void ads_show();
 void save();
@@ -73,9 +76,15 @@ int main () {
 		keybd_event(VK_CAPITAL, 0, KEYEVENTF_KEYUP, 0);
 	}
 	//#通行证校验
-	int pass=cdk();
+	int pass=0;
+    time_t tnow;
+    time(&tnow);
+	if (tnow-chtc>=120) {//2分钟内跳过检测
+		pass=cdk();
+		time(&chtc);//重置计时器
+	} else pass=1;//跳过检测
 	if (pass!=1&&copyright==true) {
-		//if (pass!=3) remove("items/set.ini");
+		if (pass!=3) remove("items/set.ini");
 		exit(0);
 	}
 	system("cls");
@@ -103,7 +112,7 @@ int main () {
 		if (ads_plus>0&&(ads_plus+ads_max)<=20) for (int ls=0; ls!=ads_plus; ls++,ads_max++) ain>>ads[ads_max];
 		ain.close();
 		//读入卡池
-		//if (outset==true) set_main();
+		if (outset==true) set_main();
 		ifstream fin(set_link);
 		fin>>made_by>>made_co>>bate>>t_day>>t_time;
 		if (bate=="\0") sets();//配置文件为空
@@ -148,7 +157,7 @@ int main () {
 			cout<<"[#请勿修改配置文件]"<<endl;
 		}
 		fin.close();
-		//if (outset==true) set_del();
+		if (outset==true) set_del();
 		first=false;
 	}
 	//显示
@@ -182,6 +191,12 @@ int main () {
 	char choose=getch();
 	system("cls");
 	if (choose=='S'||choose=='s') {
+		//check
+		ifstream kin("items/news.ini");
+		int new_max=0;
+		kin>>new_max;//更新说明数量
+		kin.close();
+		//show
 		cout<<"「"<<title<<"」抽卡模拟器"<<endl;
 		cout<<"制作者: 兮辞"<<endl;
 		cout<<"程序版本: "<<ibate<<endl;
@@ -189,22 +204,23 @@ int main () {
 		cout<<"--------------------------------------"<<endl;
 		cout<<"           「关于程序文件」"<<endl;
 		cout<<"著作权人: 兮辞"<<endl;
-		cout<<"版权归属: xicios.co"<<endl;
+		cout<<"版权归属: Copyright 2023-2025 XICIOS"<<endl;
 		cout<<"程序版本: "<<ibate<<endl;
-		cout<<"程序更新时间: "<<t_cx<<endl;
+		cout<<"更新时间: "<<t_cx<<endl;
 		cout<<"--------------------------------------"<<endl;
 		cout<<"           「关于卡池文件」"<<endl;
 		cout<<"著作权人: "<<made_by<<endl;
-		cout<<"版权归属: "<<made_co<<".co"<<endl;
+		cout<<"版权归属: Copyright 2025 "<<made_co<<endl;
 		cout<<"卡池版本: "<<bate<<endl;
-		cout<<"卡池更新时间: "<<t_day<<" "<<t_time<<endl;
+		cout<<"更新时间: "<<t_day<<" "<<t_time<<endl;
 		cout<<"--------------------------------------"<<endl;
-		cout<<">按S查看更新内容"<<endl;
+		if (new_max>0) cout<<">按S查看更新内容"<<endl;
 		if (creadin==true) cout<<">按X更改配置文件"<<endl;
 		cout<<">按任意键退出本页面"<<endl;
 		cout<<"--------------------------------------"<<endl;
 		choose=getch();
 		if (choose=='S'||choose=='s') {
+			if (new_max<=0) Error(2);
 			//变量
 			int max[200],npage=1;
 			string beta[200],day[200],time[200],out[200][15];
@@ -413,7 +429,7 @@ int main () {
 		int again=1;
 		if (choose=='Q') again=ten;
 		while (again!=0) {
-			
+
 			small+=1;
 			unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
 			mt19937 generator (seed);
@@ -477,7 +493,7 @@ int main () {
 			if (choose=='Q') Sleep(16);
 			if (gls==true) cout<<pro<<" "<<fro<<" "<<tro<<" "<<ls1<<endl;//[调试]概率显示
 		}
-		if (choose=='E') Sleep(200);
+		if (choose=='E') Sleep(600);
 		else Sleep(wait);
 		main();
 	}
@@ -487,16 +503,20 @@ int main () {
 
 //调用区
 
+void Error (int qust) {
+	//移除使用本功能
+	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE),0x0c);
+	if (qust==1) cout<<"[Error] 相关功能已被开发者锁定。"<<endl;
+	else if (qust==2) cout<<"[Error] 相关数据丢失。"<<endl;
+	else cout<<"[Error] 未知错误。"<<endl;
+	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE),2);
+	Sleep(2000);
+	main();
+}
+
 void sets () {
 	//更改配置文件
-	if (creadin==false) {
-		//移除使用本功能
-		SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE),0x0c);
-		cout<<"[Error] 相关功能已被开发者锁定。"<<endl;
-		SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE),2);
-		Sleep(2000);
-		main();
-	}
+	if (creadin==false) Error(1);
 	//路径搜索
 	WIN32_FIND_DATA findFileData;
 	HANDLE hFind=FindFirstFile(musicPath,&findFileData);
